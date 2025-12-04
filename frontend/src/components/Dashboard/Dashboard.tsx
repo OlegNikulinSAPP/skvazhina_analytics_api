@@ -1,190 +1,303 @@
-import { Chip } from '@mui/material';
-import React from 'react';
-import { motion } from 'framer-motion';
-import { Typography, Box, Card, CardContent, CircularProgress, Alert } from '@mui/material';
-import { useQuery } from '@tanstack/react-query';
-import TrendingUpIcon from '@mui/icons-material/TrendingUp';
-import LocalGasStationIcon from '@mui/icons-material/LocalGasStation';
-import WarningIcon from '@mui/icons-material/Warning';
-import AnalyticsIcon from '@mui/icons-material/Analytics';
-import { wellAPI } from '../../services/api';
+import React, { useEffect, useState } from 'react';
+import { externalWellService, WellData } from '../../services/wellsService';
 
-const Dashboard = () => {
-  // Запрашиваем данные скважин из API
-  const { data: wells, isLoading, error } = useQuery({
-    queryKey: ['wells'],
-    queryFn: () => wellAPI.getAll().then(res => res.data),
-  });
+const Dashboard: React.FC = () => {
+  console.log('🎯 Dashboard component RENDERING');
 
-  // Рассчитываем метрики из данных
-  const activeWells = wells?.filter(w => w.status === 'active').length || 0;
-  const totalFlowRate = wells?.reduce((sum, w) => sum + (w.measured_flow_rate || 0), 0) || 0;
-  const avgFlowRate = wells?.length ? Math.round(totalFlowRate / wells.length) : 0;
-  const anomalies = wells?.filter(w => w.status === 'emergency').length || 0;
+  const [wells, setWells] = useState<WellData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  if (isLoading) {
+  useEffect(() => {
+    loadWells();
+  }, []);
+
+  const loadWells = async () => {
+    try {
+      setLoading(true);
+      console.log('🔄 Загружаем данные...');
+      const data = await externalWellService.getWells();
+      console.log('✅ Данные загружены:', data);
+      setWells(data);
+      setError('');
+    } catch (err: any) {
+      console.error('❌ Ошибка:', err);
+      setError(`Ошибка загрузки: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
-        <CircularProgress />
-      </Box>
+      <div style={{
+        padding: '40px',
+        textAlign: 'center',
+        backgroundColor: '#f5f5f5',
+        minHeight: '300px',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center'
+      }}>
+        <h2 style={{ color: '#333' }}>Загрузка данных из mock API...</h2>
+        <p style={{ color: '#666' }}>Пожалуйста, подождите</p>
+        <div style={{
+          width: '50px',
+          height: '50px',
+          border: '5px solid #ddd',
+          borderTopColor: '#1976d2',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite',
+          marginTop: '20px'
+        }}></div>
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <Alert severity="error">
-        Ошибка загрузки данных: {(error as Error).message}
-      </Alert>
+      <div style={{
+        padding: '30px',
+        backgroundColor: '#ffebee',
+        borderRadius: '8px',
+        margin: '20px'
+      }}>
+        <h2 style={{ color: '#d32f2f' }}>Ошибка загрузки данных</h2>
+        <p style={{ color: '#c62828' }}>{error}</p>
+        <button
+          onClick={loadWells}
+          style={{
+            padding: '10px 20px',
+            backgroundColor: '#d32f2f',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            marginTop: '10px'
+          }}
+        >
+          Повторить попытку
+        </button>
+      </div>
     );
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-    >
-      <Typography variant="h4" gutterBottom sx={{ mb: 4 }}>
-        📊 Панель управления
-      </Typography>
+    <div style={{
+      padding: '20px',
+      backgroundColor: '#fafafa',
+      minHeight: '100vh'
+    }}>
+      <div style={{
+        backgroundColor: 'white',
+        padding: '20px',
+        borderRadius: '8px',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+        marginBottom: '20px'
+      }}>
+        <h1 style={{
+          color: '#1976d2',
+          marginTop: 0,
+          marginBottom: '10px'
+        }}>
+          📊 Панель мониторинга скважин
+        </h1>
+        <p style={{ color: '#666', marginBottom: '20px' }}>
+          Данные из mock API (имитация внешней системы мониторинга)
+        </p>
 
-      <Box display="flex" flexWrap="wrap" gap={3}>
-        {/* Карточка 1 */}
-        <Box flex="1" minWidth="250px">
-          <motion.div whileHover={{ scale: 1.05 }}>
-            <Card sx={{ background: 'linear-gradient(135deg, #1a2c42 0%, #2d4a6e 100%)' }}>
-              <CardContent>
-                <Box display="flex" alignItems="center" gap={2}>
-                  <LocalGasStationIcon sx={{ fontSize: 40, color: '#00e5ff' }} />
-                  <div>
-                    <Typography variant="h6">Активные скважины</Typography>
-                    <Typography variant="h3">{activeWells}</Typography>
-                  </div>
-                </Box>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </Box>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '15px',
+          flexWrap: 'wrap',
+          marginBottom: '20px'
+        }}>
+          <button
+            onClick={loadWells}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: '#1976d2',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontWeight: 'bold'
+            }}
+          >
+            🔄 Обновить данные
+          </button>
 
-        {/* Карточка 2 */}
-        <Box flex="1" minWidth="250px">
-          <motion.div whileHover={{ scale: 1.05 }}>
-            <Card sx={{ background: 'linear-gradient(135deg, #1a2c42 0%, #2d4a6e 100%)' }}>
-              <CardContent>
-                <Box display="flex" alignItems="center" gap={2}>
-                  <TrendingUpIcon sx={{ fontSize: 40, color: '#4caf50' }} />
-                  <div>
-                    <Typography variant="h6">Средний дебит</Typography>
-                    <Typography variant="h3">{avgFlowRate} м³/сут</Typography>
-                  </div>
-                </Box>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </Box>
+          <div style={{
+            backgroundColor: '#e8f5e9',
+            padding: '8px 15px',
+            borderRadius: '4px',
+            color: '#2e7d32',
+            fontWeight: 'bold'
+          }}>
+            📡 Режим: {externalWellService.getCurrentMode() === 'mock' ? 'MOCK API' : 'REAL API'}
+          </div>
 
-        {/* Карточка 3 */}
-        <Box flex="1" minWidth="250px">
-          <motion.div whileHover={{ scale: 1.05 }}>
-            <Card sx={{ background: 'linear-gradient(135deg, #1a2c42 0%, #2d4a6e 100%)' }}>
-              <CardContent>
-                <Box display="flex" alignItems="center" gap={2}>
-                  <WarningIcon sx={{ fontSize: 40, color: '#ff6b6b' }} />
-                  <div>
-                    <Typography variant="h6">Аномалии</Typography>
-                    <Typography variant="h3">{anomalies}</Typography>
-                  </div>
-                </Box>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </Box>
+          <div style={{ color: '#666' }}>
+            Скважин: <strong>{wells.length}</strong>
+          </div>
+        </div>
+      </div>
 
-        {/* Карточка 4 */}
-        <Box flex="1" minWidth="250px">
-          <motion.div whileHover={{ scale: 1.05 }}>
-            <Card sx={{ background: 'linear-gradient(135deg, #1a2c42 0%, #2d4a6e 100%)' }}>
-              <CardContent>
-                <Box display="flex" alignItems="center" gap={2}>
-                  <AnalyticsIcon sx={{ fontSize: 40, color: '#ffeb3b' }} />
-                  <div>
-                    <Typography variant="h6">Эффективность</Typography>
-                    <Typography variant="h3">
-                      {wells?.length ? `${Math.round((activeWells / wells.length) * 100)}%` : '0%'}
-                    </Typography>
-                  </div>
-                </Box>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </Box>
-      </Box>
-
-       {/* Таблица скважин */}
-        <Box sx={{ mt: 4 }}>
-          <Typography variant="h5" gutterBottom>
-            📋 Список скважин
-          </Typography>
-
-          {wells && wells.length > 0 ? (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.2 }}
+      {wells.length === 0 ? (
+        <div style={{
+          textAlign: 'center',
+          padding: '40px',
+          backgroundColor: 'white',
+          borderRadius: '8px',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+        }}>
+          <h3 style={{ color: '#666' }}>Нет данных</h3>
+          <p style={{ color: '#999' }}>Mock API не вернул данные скважин</p>
+        </div>
+      ) : (
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+          gap: '20px'
+        }}>
+          {wells.map(well => (
+            <div
+              key={well.well_id}
+              style={{
+                border: '1px solid #e0e0e0',
+                padding: '20px',
+                borderRadius: '8px',
+                backgroundColor: 'white',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+                color: '#333',
+                transition: 'transform 0.2s, box-shadow 0.2s',
+                cursor: 'pointer'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-5px)';
+                e.currentTarget.style.boxShadow = '0 5px 15px rgba(0,0,0,0.1)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.05)';
+              }}
+              onClick={() => {
+                console.log('Переход к скважине:', well.well_id);
+                window.location.href = `/well/${well.well_id}`;
+              }}
             >
-              <Card>
-                <CardContent>
-                  <Box display="flex" flexWrap="wrap" gap={2}>
-                    {wells.map((well) => (
-                      <motion.div
-                        key={well.id}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                      >
-                        <Card
-                          sx={{
-                            minWidth: 200,
-                            background: 'linear-gradient(135deg, #1a2c42 0%, #2d4a6e 100%)',
-                            cursor: 'pointer'
-                          }}
-                          onClick={() => window.location.href = `/well/${well.id}`}
-                        >
-                          <CardContent>
-                            <Typography variant="h6" gutterBottom>
-                              {well.well_number}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              {well.field}
-                            </Typography>
-                            <Chip
-                              label={well.status_display}
-                              size="small"
-                              color={
-                                well.status === 'active' ? 'success' :
-                                well.status === 'emergency' ? 'error' :
-                                well.status === 'maintenance' ? 'warning' : 'default'
-                              }
-                              sx={{ mt: 1 }}
-                            />
-                          </CardContent>
-                        </Card>
-                      </motion.div>
-                    ))}
-                  </Box>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ) : (
-            <Alert severity="info">
-              В базе данных нет скважин. Добавьте скважины через админку Django.
-            </Alert>
-          )}
-        </Box>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '15px'
+              }}>
+                <h3 style={{
+                  margin: 0,
+                  color: '#1976d2',
+                  fontSize: '1.2rem'
+                }}>
+                  {well.well_id}
+                </h3>
 
-      <Typography variant="h5" sx={{ mt: 4, mb: 2 }}>
-        Загружено скважин: {wells?.length || 0} 🚀
-      </Typography>
-    </motion.div>
+                <span style={{
+                  padding: '4px 10px',
+                  borderRadius: '12px',
+                  fontSize: '0.8rem',
+                  fontWeight: 'bold',
+                  backgroundColor: well.status === 'active' ? '#e8f5e9' :
+                                 well.status === 'maintenance' ? '#fff3e0' : '#ffebee',
+                  color: well.status === 'active' ? '#2e7d32' :
+                        well.status === 'maintenance' ? '#ef6c00' : '#d32f2f'
+                }}>
+                  {well.status === 'active' ? 'Активна' :
+                   well.status === 'maintenance' ? 'Обслуживание' : 'Остановлена'}
+                </span>
+              </div>
+
+              <div style={{ marginBottom: '15px' }}>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  marginBottom: '8px'
+                }}>
+                  <span style={{ color: '#666' }}>Температура:</span>
+                  <strong style={{ color: '#d32f2f' }}>{well.temperature}°C</strong>
+                </div>
+
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  marginBottom: '8px'
+                }}>
+                  <span style={{ color: '#666' }}>Дебит:</span>
+                  <strong style={{ color: '#1976d2' }}>{well.flow_rate} м³/сут</strong>
+                </div>
+
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  marginBottom: '8px'
+                }}>
+                  <span style={{ color: '#666' }}>Давление:</span>
+                  <strong style={{ color: '#7b1fa2' }}>{well.pressure} атм</strong>
+                </div>
+
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between'
+                }}>
+                  <span style={{ color: '#666' }}>Глубина:</span>
+                  <strong>{well.depth} м</strong>
+                </div>
+              </div>
+
+              {well.coordinates && (
+                <div style={{
+                  fontSize: '0.85rem',
+                  color: '#888',
+                  borderTop: '1px solid #eee',
+                  paddingTop: '10px',
+                  marginTop: '10px'
+                }}>
+                  📍 Координаты: {well.coordinates.lat.toFixed(4)}, {well.coordinates.lon.toFixed(4)}
+                </div>
+              )}
+
+              {well.operator && (
+                <div style={{
+                  fontSize: '0.85rem',
+                  color: '#888',
+                  marginTop: '5px'
+                }}>
+                  🏢 Оператор: {well.operator}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{
+        marginTop: '30px',
+        padding: '15px',
+        backgroundColor: '#e3f2fd',
+        borderRadius: '8px',
+        fontSize: '0.9rem',
+        color: '#1565c0'
+      }}>
+        <strong>ℹ️ Информация:</strong> Это тестовые данные из mock API.
+        Для переключения на реальное API используйте <code>externalWellService.setUseMock(false)</code>
+      </div>
+    </div>
   );
 };
 

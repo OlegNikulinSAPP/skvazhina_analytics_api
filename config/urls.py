@@ -35,4 +35,5 @@ urlpatterns = [
     path('', home_view, name='home'),  # ← корневой URL
     path('admin/', admin.site.urls),
     path('api/', include('wells.urls')),
+    path('mock-external/', include('mock_external_api.urls')),
 ]

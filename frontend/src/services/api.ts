@@ -1,33 +1,42 @@
+// frontend/src/services/api.ts
 import axios from 'axios';
 
-const API_BASE_URL = 'http://127.0.0.1:8000/api';
+// Конфигурация API
+const API_CONFIG = {
+  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:8000',
+  mockExternalURL: process.env.REACT_APP_MOCK_EXTERNAL_URL || 'http://localhost:8000/mock-external',
+  timeout: 30000,
+};
 
-export const api = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+// Создаем клиент для ОСНОВНОГО API (наш Django)
+export const apiClient = axios.create({
+  baseURL: API_CONFIG.baseURL + '/api',
+  timeout: API_CONFIG.timeout,
 });
 
-export interface Well {
-  id: number;
-  well_number: string;
-  field: string;
-  latitude: number;
-  longitude: number;
-  depth: number;
-  status: 'active' | 'inactive' | 'maintenance' | 'emergency';
-  status_display: string;
-  current_pressure: number | null;
-  measured_flow_rate: number | null;
-  temperature: number | null;
-  last_data_update: string;
-}
+// Создаем клиент для МОК внешнего API
+export const mockExternalApiClient = axios.create({
+  baseURL: API_CONFIG.mockExternalURL,
+  timeout: API_CONFIG.timeout,
+});
 
-export const wellAPI = {
-  getAll: () => api.get<Well[]>('/wells/'),
-  getById: (id: number) => api.get<Well>(`/wells/${id}/`),
-  create: (data: Partial<Well>) => api.post<Well>('/wells/', data),
-  update: (id: number, data: Partial<Well>) => api.put<Well>(`/wells/${id}/`, data),
-  delete: (id: number) => api.delete(`/wells/${id}/`),
-};
+// Перехватчик для логирования запросов
+mockExternalApiClient.interceptors.request.use(
+  config => {
+    console.log(`[Mock API] ${config.method?.toUpperCase()} ${config.url}`);
+    return config;
+  },
+  error => {
+    console.error('[Mock API Request Error]', error);
+    return Promise.reject(error);
+  }
+);
+
+// Перехватчик для обработки ошибок
+mockExternalApiClient.interceptors.response.use(
+  response => response,
+  error => {
+    console.error('[Mock API Response Error]', error.response?.status, error.message);
+    return Promise.reject(error);
+  }
+);

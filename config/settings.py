@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
     'wells.apps.WellsConfig',
+    'mock_external_api',
 ]
 
 MIDDLEWARE = [
