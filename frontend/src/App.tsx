@@ -1,16 +1,26 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ThemeProvider, createTheme, CssBaseline, Container, Typography, Box } from '@mui/material';
+import {
+  ThemeProvider,
+  createTheme,
+  CssBaseline,
+  Container,
+  Typography,
+  Box,
+  Button
+} from '@mui/material';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import Dashboard from './components/Dashboard/Dashboard';
+import WellDetail from './components/WellDetail/WellDetail';
+import Recommendations from './components/Recommendations/Recommendations';
 
 // Крутая темная тема для нефтегазовой аналитики
 const theme = createTheme({
   palette: {
     mode: 'dark',
     primary: {
-      main: '#00e5ff', // Неоново-синий для нефтегазовой тематики
+      main: '#00e5ff',
     },
     secondary: {
       main: '#ff6b6b',
@@ -24,7 +34,7 @@ const theme = createTheme({
 
 const queryClient = new QueryClient();
 
-function App() {
+const App: React.FC = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider theme={theme}>
@@ -57,9 +67,39 @@ function App() {
                   </Typography>
                 </motion.div>
 
+                <motion.div
+                  initial={{ y: -20 }}
+                  animate={{ y: 0 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  <Box sx={{ display: 'flex', gap: 2, mb: 4, flexWrap: 'wrap' }}>
+                    <Button
+                      component={Link}
+                      to="/"
+                      variant="outlined"
+                      startIcon={<span>📊</span>}
+                      sx={{ borderRadius: 2 }}
+                    >
+                      Панель управления
+                    </Button>
+
+                    <Button
+                      component={Link}
+                      to="/recommendations"
+                      variant="outlined"
+                      startIcon={<span>💡</span>}
+                      sx={{ borderRadius: 2 }}
+                    >
+                      Рекомендации
+                    </Button>
+                  </Box>
+                </motion.div>
+
                 <Routes>
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/well/:id" element={<WellDetail />} />
+                  <Route path="/recommendations" element={<Recommendations />} />
                 </Routes>
               </Box>
             </Container>
@@ -68,6 +108,6 @@ function App() {
       </ThemeProvider>
     </QueryClientProvider>
   );
-}
+};
 
 export default App;
