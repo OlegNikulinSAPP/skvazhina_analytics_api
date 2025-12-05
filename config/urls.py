@@ -36,4 +36,6 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('wells.urls')),
     path('mock-external/', include('mock_external_api.urls')),
+    path('api-auth/', include('rest_framework.urls')),
+    path('api/auth/', include('authentication.urls')),
 ]

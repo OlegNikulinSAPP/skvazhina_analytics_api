@@ -14,6 +14,9 @@ import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import Dashboard from './components/Dashboard/Dashboard';
 import WellDetail from './components/WellDetail/WellDetail';
 import Recommendations from './components/Recommendations/Recommendations';
+import Login from './components/Login/Login';
+import { authService } from './services/authService';
+import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute';
 
 // Крутая темная тема для нефтегазовой аналитики
 const theme = createTheme({
@@ -92,14 +95,49 @@ const App: React.FC = () => {
                     >
                       Рекомендации
                     </Button>
+
+                    <Button
+                      component={Link}
+                      to="/logout"
+                      variant="outlined"
+                      startIcon={<span>🚪</span>}
+                      sx={{ borderRadius: 2 }}
+                      onClick={() => {
+                        authService.logout();
+                        window.location.href = '/';
+                      }}
+                    >
+                      Выйти
+                    </Button>
                   </Box>
                 </motion.div>
 
                 <Routes>
-                  <Route path="/" element={<Dashboard />} />
-                  <Route path="/dashboard" element={<Dashboard />} />
-                  <Route path="/well/:id" element={<WellDetail />} />
-                  <Route path="/recommendations" element={<Recommendations />} />
+                  <Route path="/login" element={<Login />} />
+
+                  <Route path="/" element={
+                    <ProtectedRoute>
+                      <Dashboard />
+                    </ProtectedRoute>
+                  } />
+
+                  <Route path="/dashboard" element={
+                    <ProtectedRoute>
+                      <Dashboard />
+                    </ProtectedRoute>
+                  } />
+
+                  <Route path="/well/:id" element={
+                    <ProtectedRoute>
+                      <WellDetail />
+                    </ProtectedRoute>
+                  } />
+
+                  <Route path="/recommendations" element={
+                    <ProtectedRoute>
+                      <Recommendations />
+                    </ProtectedRoute>
+                  } />
                 </Routes>
               </Box>
             </Container>

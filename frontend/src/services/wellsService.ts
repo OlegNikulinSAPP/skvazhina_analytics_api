@@ -1,5 +1,6 @@
 // frontend/src/services/wellsService.ts
 import { apiClient, mockExternalApiClient } from './api';
+import { authService } from './authService';
 
 // Типы данных (соответствуют mock API)
 export interface Coordinates {
@@ -53,41 +54,41 @@ export class ExternalWellService {
   // Использовать ли mock API (true = использовать наш mock, false = реальный API)
   private useMock: boolean = true;
 
-  // Получить список скважин
+  // Получить список скважин из НАШЕГО API (защищенный)
+  async getWellsFromOurApi(): Promise<WellData[]> {
+    try {
+      const response = await apiClient.get('/wells/', {
+        headers: authService.getAuthHeader()
+      });
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.status === 401) {
+        // Токен истек, пробуем обновить
+        await authService.refreshAccessToken();
+        // Повторяем запрос с новым токеном
+        const retryResponse = await apiClient.get('/wells/', {
+          headers: authService.getAuthHeader()
+        });
+        return retryResponse.data;
+      }
+      throw error;
+    }
+  }
+
+  // Получить список скважин (главный метод)
   async getWells(): Promise<WellData[]> {
     try {
-      console.log('📡 [wellsService] Запрос списка скважин...');
-      console.log('📡 URL:', mockExternalApiClient.defaults.baseURL + '/api/v1/wells/');
-
-      const response = await mockExternalApiClient.get('/api/v1/wells/');
-
-      console.log('✅ [wellsService] Ответ получен:', response.status);
-      console.log('📦 Данные:', response.data);
-
-      // Попробуем разные форматы
-      const data = response.data;
-
-      if (data && data.data && data.data.wells) {
-        console.log('✅ Формат 1 (data.data.wells)');
-        return data.data.wells;
+      if (this.useMock) {
+        // Используем mock API (без авторизации)
+        const response = await mockExternalApiClient.get<ApiResponse<WellsListResponse>>('/api/v1/wells/');
+        return response.data.data.wells;
+      } else {
+        // Режим реального API - используем защищенный эндпоинт
+        return await this.getWellsFromOurApi();
       }
-      else if (data && data.wells) {
-        console.log('✅ Формат 2 (data.wells)');
-        return data.wells;
-      }
-      else if (Array.isArray(data)) {
-        console.log('✅ Формат 3 (массив)');
-        return data;
-      }
-      else {
-        console.warn('⚠️ Неизвестный формат:', data);
-        return [];
-      }
-
     } catch (error: any) {
-      console.error('❌ [wellsService] Ошибка:', error);
-      console.error('❌ Детали:', error.response?.data || error.message);
-      return []; // Возвращаем пустой массив вместо ошибки
+      console.error('Error fetching wells:', error);
+      throw error;
     }
   }
 
@@ -98,9 +99,13 @@ export class ExternalWellService {
         const response = await mockExternalApiClient.get<ApiResponse<WellData>>(`/api/v1/wells/${id}/`);
         return response.data.data;
       } else {
-        throw new Error('Real external API not implemented yet');
+        // Для реального API используем наш защищенный эндпоинт
+        const response = await apiClient.get(`/wells/${id}/`, {
+          headers: authService.getAuthHeader()
+        });
+        return response.data;
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Error fetching well ${id}:`, error);
       throw error;
     }
@@ -115,7 +120,8 @@ export class ExternalWellService {
         );
         return response.data.data;
       } else {
-        throw new Error('Real external API not implemented yet');
+        // Для реального API - реализовать позже
+        throw new Error('Real external API telemetry not implemented yet');
       }
     } catch (error) {
       console.error(`Error fetching telemetry for well ${id}:`, error);
@@ -130,7 +136,10 @@ export class ExternalWellService {
         const response = await mockExternalApiClient.get('/api/v1/health/');
         return response.data;
       } else {
-        throw new Error('Real external API not implemented yet');
+        const response = await apiClient.get('/health/', {
+          headers: authService.getAuthHeader()
+        });
+        return response.data;
       }
     } catch (error) {
       console.error('Error checking API health:', error);

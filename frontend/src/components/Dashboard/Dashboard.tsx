@@ -1,34 +1,58 @@
 import React, { useEffect, useState } from 'react';
 import { externalWellService, WellData } from '../../services/wellsService';
+import { authService } from '../../services/authService';
 
 const Dashboard: React.FC = () => {
   console.log('🎯 Dashboard component RENDERING');
 
+  // ВСЕ хуки объявляем в начале (правильный порядок)
+  const [isAuthenticated] = useState(authService.isAuthenticated());
   const [wells, setWells] = useState<WellData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [apiStatus, setApiStatus] = useState<string>('unknown');
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   useEffect(() => {
-    loadWells();
-  }, []);
+    if (isAuthenticated) {
+      loadData();
+    }
+  }, [isAuthenticated]);
 
-  const loadWells = async () => {
+  const loadData = async (): Promise<void> => {
     try {
       setLoading(true);
-      console.log('🔄 Загружаем данные...');
-      const data = await externalWellService.getWells();
-      console.log('✅ Данные загружены:', data);
-      setWells(data);
       setError('');
+
+      // Проверяем здоровье API
+      const health = await externalWellService.checkHealth();
+      setApiStatus(health.status);
+
+      // Загружаем список скважин
+      const wellsData = await externalWellService.getWells();
+      setWells(wellsData);
+      setLastUpdated(new Date());
+
     } catch (err: any) {
-      console.error('❌ Ошибка:', err);
-      setError(`Ошибка загрузки: ${err.message}`);
+      console.error('Ошибка загрузки данных:', err);
+      setError(err.message || 'Не удалось загрузить данные');
+      setApiStatus('error');
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading) {
+  // Функция для перевода статуса
+  const translateStatus = (status: string): string => {
+    const translations: Record<string, string> = {
+      'active': 'Работает',
+      'maintenance': 'Техобслуживание',
+      'inactive': 'Остановлена'
+    };
+    return translations[status] || status;
+  };
+
+  if (loading && wells.length === 0) {
     return (
       <div style={{
         padding: '40px',
@@ -61,7 +85,7 @@ const Dashboard: React.FC = () => {
     );
   }
 
-  if (error) {
+  if (error && wells.length === 0) {
     return (
       <div style={{
         padding: '30px',
@@ -72,7 +96,7 @@ const Dashboard: React.FC = () => {
         <h2 style={{ color: '#d32f2f' }}>Ошибка загрузки данных</h2>
         <p style={{ color: '#c62828' }}>{error}</p>
         <button
-          onClick={loadWells}
+          onClick={loadData}
           style={{
             padding: '10px 20px',
             backgroundColor: '#d32f2f',
@@ -110,7 +134,7 @@ const Dashboard: React.FC = () => {
           📊 Панель мониторинга скважин
         </h1>
         <p style={{ color: '#666', marginBottom: '20px' }}>
-          Данные из mock API (имитация внешней системы мониторинга)
+          Данные из {externalWellService.getCurrentMode() === 'mock' ? 'MOCK' : 'реального'} API
         </p>
 
         <div style={{
@@ -121,7 +145,7 @@ const Dashboard: React.FC = () => {
           marginBottom: '20px'
         }}>
           <button
-            onClick={loadWells}
+            onClick={loadData}
             style={{
               padding: '10px 20px',
               backgroundColor: '#1976d2',
@@ -145,9 +169,25 @@ const Dashboard: React.FC = () => {
             📡 Режим: {externalWellService.getCurrentMode() === 'mock' ? 'MOCK API' : 'REAL API'}
           </div>
 
+          <div style={{
+            backgroundColor: apiStatus === 'healthy' ? '#e8f5e9' : '#ffebee',
+            padding: '8px 15px',
+            borderRadius: '4px',
+            color: apiStatus === 'healthy' ? '#2e7d32' : '#d32f2f',
+            fontWeight: 'bold'
+          }}>
+            API: {apiStatus === 'healthy' ? '✅ Здоров' : '❌ Проблемы'}
+          </div>
+
           <div style={{ color: '#666' }}>
             Скважин: <strong>{wells.length}</strong>
           </div>
+
+          {lastUpdated && (
+            <div style={{ color: '#999', fontSize: '0.9rem' }}>
+              Обновлено: {lastUpdated.toLocaleTimeString()}
+            </div>
+          )}
         </div>
       </div>
 
@@ -160,7 +200,7 @@ const Dashboard: React.FC = () => {
           boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
         }}>
           <h3 style={{ color: '#666' }}>Нет данных</h3>
-          <p style={{ color: '#999' }}>Mock API не вернул данные скважин</p>
+          <p style={{ color: '#999' }}>API не вернул данные скважин</p>
         </div>
       ) : (
         <div style={{
@@ -218,8 +258,7 @@ const Dashboard: React.FC = () => {
                   color: well.status === 'active' ? '#2e7d32' :
                         well.status === 'maintenance' ? '#ef6c00' : '#d32f2f'
                 }}>
-                  {well.status === 'active' ? 'Активна' :
-                   well.status === 'maintenance' ? 'Обслуживание' : 'Остановлена'}
+                  {translateStatus(well.status)}
                 </span>
               </div>
 
